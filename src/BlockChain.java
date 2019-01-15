@@ -13,37 +13,21 @@ public class BlockChain {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     private HashMap<Block , BackwardsNode> nodesOfBlockChain = new HashMap<>();
     private BlockHandler blockHandler = new BlockHandler(this);
+    private TransactionPool transactionPool;
+    private TxHandler txHandler;
+    private UTXOPool utxoPool;
 
     private PublicKey myAddress;
 
     public BlockChain(PublicKey myAddress){
+        this.utxoPool = new UTXOPool();
+        this.transactionPool = new TransactionPool();
+
+        this.txHandler = new TxHandler(utxoPool);
         this.myAddress = myAddress;
     }
 
-    private class BackwardsNode{
 
-        //unidirected tree node, each block does not know it's successor
-        private BackwardsNode previousNode;
-
-        private Block blockOfThisNode;
-        private Date  dateOfBlock;
-        private int height;
-
-        public BackwardsNode(BackwardsNode previousNode, Block blockOfThisNode, Date dateOfBlock, int height){
-            this.previousNode = previousNode;
-            this.blockOfThisNode = blockOfThisNode;
-            this.dateOfBlock = dateOfBlock;
-            this.height = height;
-
-            if(!genesis){
-                genesis = true;
-            }
-
-            if(previousNode == null && genesis){
-                throw new IllegalArgumentException("The genesis Block already exists!");
-            }
-        }
-    }
 
     /**
      * create an empty block chain with just a genesis block. Assume {@code genesisBlock} is a valid
@@ -111,6 +95,33 @@ public class BlockChain {
 
     /** Add a transaction to the transaction pool */
     public void addTransaction(Transaction tx) {
-        // IMPLEMENT THIS
+
+
+        transactionPool.addTransaction(tx);
+    }
+
+    private class BackwardsNode{
+
+        //unidirected tree node, each block does not know it's successor
+        private BackwardsNode previousNode;
+
+        private Block blockOfThisNode;
+        private Date  dateOfBlock;
+        private int height;
+
+        public BackwardsNode(BackwardsNode previousNode, Block blockOfThisNode, Date dateOfBlock, int height){
+            this.previousNode = previousNode;
+            this.blockOfThisNode = blockOfThisNode;
+            this.dateOfBlock = dateOfBlock;
+            this.height = height;
+
+            if(!genesis){
+                genesis = true;
+            }
+
+            if(previousNode == null && genesis){
+                throw new IllegalArgumentException("The genesis Block already exists!");
+            }
+        }
     }
 }
