@@ -2,31 +2,18 @@
 // You should not have all the blocks added to the block chain in memory 
 // as it would cause a memory overflow.
 
-import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class BlockChain {
     public static final int CUT_OFF_AGE = 10;
-    public static boolean genesis = false; //the first block a.k.a. genesisBlock sets this to true only once per blockchain
+
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private HashMap<Block , BackwardsNode> nodesOfBlockChain = new HashMap<>();
-    private BlockHandler blockHandler = new BlockHandler(this);
-    private TransactionPool transactionPool;
-    private TxHandler txHandler;
+
+    private TransactionPool txPool;
     private UTXOPool utxoPool;
-
-    private PublicKey myAddress;
-
-    public BlockChain(PublicKey myAddress){
-        this.utxoPool = new UTXOPool();
-        this.transactionPool = new TransactionPool();
-
-        this.txHandler = new TxHandler(utxoPool);
-        this.myAddress = myAddress;
-    }
-
+    public HashMap<byte[] , BlockNode> nodesOfBlockChain = new HashMap<>();
 
 
     /**
@@ -36,38 +23,36 @@ public class BlockChain {
     public BlockChain(Block genesisBlock) {
         Date date = new Date();
         dateFormat.format(date);
-
-        BackwardsNode genesisNode = new BackwardsNode(null, genesisBlock, date, 1);
-        nodesOfBlockChain.put(genesisBlock, genesisNode);
+        genesisBlock.finalize();
+        BlockNode genesisNode = new BlockNode(genesisBlock, dateFormat.format(new Date()), 1);
+        nodesOfBlockChain.put(genesisBlock.getHash(), genesisNode);
     }
 
-    /** Get the maximum height block */
-    public Block getMaxHeightBlock() {
 
-        BackwardsNode oneMaximumHeightNode =  nodesOfBlockChain.values().stream()
-                                                                        .max(Comparator.comparing(node -> node.height))
+    /** Get the maximum height block */
+    public BlockNode getMaxHeightBlock() {
+        BlockNode oneMaximumHeightNode =  nodesOfBlockChain.values().stream()
+                                                                        .max(Comparator.comparing(node -> node.getHeight()))
                                                                         .orElse(null);
 
-        final int maximum = (oneMaximumHeightNode != null) ? oneMaximumHeightNode.height : 1;
+        final int maximum = (oneMaximumHeightNode != null) ? oneMaximumHeightNode.getHeight() : 1;
 
-        List<BackwardsNode> maximumHeightNodes = nodesOfBlockChain.values().stream()
-                                                                        .filter(node -> node.height == maximum)
-                                                                        .collect(Collectors.toList());
+        List<BlockNode> maximumHeightNodes = nodesOfBlockChain.values().stream()
+                                                                       .filter(node -> node.getHeight() == maximum)
+                                                                       .collect(Collectors.toList());
 
-        maximumHeightNodes.sort(Comparator.comparing(node -> node.dateOfBlock));
-        return maximumHeightNodes.get(0).blockOfThisNode; // oldest block of maxHeight is the first of this list
+        maximumHeightNodes.sort(Comparator.comparing(node -> node.getDateOfBlock()));
+        return maximumHeightNodes.get(0); // oldest block of maxHeight is the first of this list
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
-        // IMPLEMENT THIS
-        return null;
+        return this.utxoPool;
     }
 
     /** Get the transaction pool to mine a new block */
     public TransactionPool getTransactionPool() {
-        // IMPLEMENT THIS
-        return null;
+        return this.txPool;
     }
 
     /**
@@ -83,45 +68,52 @@ public class BlockChain {
      * @return true if block is successfully added
      */
     public boolean addBlock(Block block) {
+        // the genesis block is the only one that does not have a previous hash
+        TxHandler txHandler = new TxHandler(this.utxoPool);
+        byte[]  prevBlockHash = block.getPrevBlockHash();
+        ArrayList<Transaction> blockTx = block.getTransactions();
+        BlockNode prevBlock = this.nodesOfBlockChain.get(prevBlockHash);
+        BlockNode maxHeightBlock = this.getMaxHeightBlock();
+        
+        if(block.getPrevBlockHash() == null)
+            return false;
+        
+        if(prevBlock.getHeight() < maxHeightBlock.getHeight() - CUT_OFF_AGE)
+            return false;
 
+
+        Transaction[] validTxs = new Transaction[blockTx.size()];
+        int i = 0;
+        for(Transaction tx: blockTx){
+            validTxs[i] = tx;
+            i++;
+        }
+       txHandler.handleTxs(validTxs); // for some reason .toArray didn't work with casting
 
         // the genesis block is the only one that does not have a previous hash
         if(block.getPrevBlockHash() == null){
             return false;
         }
-        // IMPLEMENT THIS
-        return false;
+        else {
+            TransactionPool newTxPool = new TransactionPool();
+            for(Transaction tx : validTxs){
+                newTxPool.addTransaction(tx);
+            }
+            UTXOPool newUTXOPool = new UTXOPool(txHandler.getUTXOPool());
+            this.txPool = newTxPool;
+            this.utxoPool = newUTXOPool;
+
+            this.txPool.addTransaction(block.getCoinbase()); //the coinbase transaction is added if the block is valid
+        }
+        //Creating a new BlockNode and adding it to the hashmap in BlockChain
+        nodesOfBlockChain.put(block.getRawBlock(), new BlockNode(block, dateFormat.format(new Date()), maxHeightBlock.getHeight()+1));
+
+        return true;
     }
 
     /** Add a transaction to the transaction pool */
     public void addTransaction(Transaction tx) {
-
-
-        transactionPool.addTransaction(tx);
-    }
-
-    private class BackwardsNode{
-
-        //unidirected tree node, each block does not know it's successor
-        private BackwardsNode previousNode;
-
-        private Block blockOfThisNode;
-        private Date  dateOfBlock;
-        private int height;
-
-        public BackwardsNode(BackwardsNode previousNode, Block blockOfThisNode, Date dateOfBlock, int height){
-            this.previousNode = previousNode;
-            this.blockOfThisNode = blockOfThisNode;
-            this.dateOfBlock = dateOfBlock;
-            this.height = height;
-
-            if(!genesis){
-                genesis = true;
-            }
-
-            if(previousNode == null && genesis){
-                throw new IllegalArgumentException("The genesis Block already exists!");
-            }
-        }
+        txPool.addTransaction(tx);
     }
 }
+
