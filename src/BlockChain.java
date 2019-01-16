@@ -2,27 +2,20 @@
 // You should not have all the blocks added to the block chain in memory 
 // as it would cause a memory overflow.
 
-import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class BlockChain {
     public static final int CUT_OFF_AGE = 10;
-    public static boolean genesis = false; //the first block a.k.a. genesisBlock sets this to true only once per blockchain
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private HashMap<byte[] , BackwardsNode> nodesOfBlockChain = new HashMap<>();
+    private HashMap<byte[] , BlockNode> nodesOfBlockChain = new HashMap<>();
     private BlockHandler blockHandler = new BlockHandler(this);
 
     private TransactionPool txPool = new TransactionPool();
     private UTXOPool utxoPool = new UTXOPool();
-    // private PublicKey myAddress;
 
-    // public BlockChain(PublicKey myAddress){
-    //     this.myAddress = myAddress;
-    // }
-
-    private class BlockNode{
+    public class BlockNode{
 
         //unidirected tree node, each block does not know it's successor
         private byte[] previousNodeHash;
@@ -35,17 +28,14 @@ public class BlockChain {
             this.blockOfThisNode = blockOfThisNode;
             this.dateOfBlock = dateOfBlock;
             this.height = height;
-
-            // if(!genesis){
-            //     genesis = true;
-            // }
-
-            // if(previousNode == null && genesis){
-            //     throw new IllegalArgumentException("The genesis Block already exists!");
-            // }
         }
-        public getBlockHash() {
+
+        public byte [] getBlockHash() {
             return this.blockOfThisNode.getHash();
+        }
+
+        public Block getBlockOfThisNode(){
+            return this.blockOfThisNode;
         }
     }
 
@@ -62,7 +52,7 @@ public class BlockChain {
     }
 
     /** Get the maximum height block */
-    public Block getMaxHeightBlock() {
+    public BlockNode getMaxHeightBlock() {
 
         BlockNode oneMaximumHeightNode =  nodesOfBlockChain.values().stream()
                                                                         .max(Comparator.comparing(node -> node.height))
@@ -71,11 +61,11 @@ public class BlockChain {
         final int maximum = (oneMaximumHeightNode != null) ? oneMaximumHeightNode.height : 1;
 
         List<BlockNode> maximumHeightNodes = nodesOfBlockChain.values().stream()
-                                                                        .filter(node -> node.height == maximum)
-                                                                        .collect(Collectors.toList());
+                                                                       .filter(node -> node.height == maximum)
+                                                                       .collect(Collectors.toList());
 
         maximumHeightNodes.sort(Comparator.comparing(node -> node.dateOfBlock));
-        return maximumHeightNodes.get(0).blockOfThisNode; // oldest block of maxHeight is the first of this list
+        return maximumHeightNodes.get(0); // oldest block of maxHeight is the first of this list
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
@@ -116,7 +106,7 @@ public class BlockChain {
         if(prevBlock.height < maxHeightBlock.height - CUT_OFF_AGE)
             return false;
         
-        Transaction[] validTxs = txHandler.handleTxs(blockTx.toArray());
+        Transaction[] validTxs = txHandler.handleTxs((Transaction [])blockTx.toArray());
 
         if(validTxs.length != blockTx.toArray().length)
             return false;
@@ -124,7 +114,7 @@ public class BlockChain {
         else {
             TransactionPool newTxPool = new TransactionPool();
             for(Transaction tx : validTxs){
-                newTxPool.add(tx);
+                newTxPool.addTransaction(tx);
             }
             UTXOPool newUTXOPool = new UTXOPool(txHandler.getUTXOPool());
             this.txPool = newTxPool;
