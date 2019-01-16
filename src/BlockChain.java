@@ -11,8 +11,8 @@ public class BlockChain {
 
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
-    private TransactionPool txPool;
-    private UTXOPool utxoPool;
+    private TransactionPool txPool = new TransactionPool();
+    private UTXOPool utxoPool = new UTXOPool();
     public HashMap<byte[] , BlockNode> nodesOfBlockChain = new HashMap<>();
 
 
