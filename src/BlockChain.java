@@ -42,17 +42,20 @@ public class BlockChain {
                                                                        .collect(Collectors.toList());
 
         maximumHeightNodes.sort(Comparator.comparing(node -> node.getDateOfBlock()));
-        System.out.println(maximum);
         return maximumHeightNodes.get(0); // oldest block of maxHeight is the first of this list
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
         ArrayList<Transaction> maxHeightBlockTxs = getMaxHeightBlock().getBlockOfThisNode().getTransactions();
-        for(Transaction tx :maxHeightBlockTxs) {
-            
-        } 
-        return ();
+        UTXOPool maxHeightUTXOPool = new UTXOPool();
+
+        for(Transaction tx : maxHeightBlockTxs) {
+            for(int index = 0; index <tx.getOutputs().size(); index++) {
+                maxHeightUTXOPool.addUTXO(new UTXO(tx.getHash(), index), tx.getOutput(index));
+            }
+        }
+        return maxHeightUTXOPool;
     }
 
     /** Get the transaction pool to mine a new block */
@@ -93,7 +96,7 @@ public class BlockChain {
             validTxs[i] = tx;
             i++;
         }
-       txHandler.handleTxs(validTxs); // for some reason .toArray didn't work with casting
+       txHandler.handleTxs(validTxs);
 
         // the genesis block is the only one that does not have a previous hash
         if(block.getPrevBlockHash() == null){

@@ -77,33 +77,33 @@ public class Test {
 
 
 
-
         Block genesis = new Block(null, aliceKeyPair.getPublic());
         genesis.finalize();
-        BlockChain blockChain = new BlockChain(genesis);
 
+        BlockChain blockChain = new BlockChain(genesis);
         BlockHandler blockHandler = new BlockHandler(blockChain);
 
+
         Block block2 = new Block(genesis.getHash(),aliceKeyPair.getPublic());
+        Transaction validTransaction = new Transaction();
+        validTransaction.addOutput(0,aliceKeyPair.getPublic());
+        System.out.println("Is the transaction which is added to the BC valid? --> " + txHandler.isValidTx(validTransaction));
+        validTransaction.finalize();
+        blockChain.addTransaction(validTransaction);
+        System.out.println("Transactions in the blockchain txPool: " + blockChain.getTransactionPool().getTransactions().size());
 
-        for(Transaction transaction :acceptedTx){
-            block2.addTransaction(transaction);
-        }
+
         block2.finalize();
-
+        System.out.println("Block 2 Transactions: " + block2.getTransactions().size()); //the transaction is not forwareded to the block ...
         blockHandler.processBlock(block2);
-        System.out.println(blockChain.nodesOfBlockChain.size());
 
         Block block3 = new Block(block2.getHash(),bobKeyPair.getPublic());
         block3.finalize();
-
         blockHandler.processBlock(block3);
 
         Block block4 = new Block(block3.getHash(),bobKeyPair.getPublic());
         block4.finalize();
-
         blockHandler.processBlock(block4);
-        System.out.println(blockChain.printBlockChain());
 
         Block block5 = new Block(block2.getHash(),bobKeyPair.getPublic());
         block5.finalize();
@@ -111,9 +111,16 @@ public class Test {
         blockHandler.processBlock(block5);
         System.out.println(blockChain.printBlockChain());
 
-        // System.out.println(blockChain.nodesOfBlockChain.size());
 
-        // System.out.println(blockChain.getMaxHeightBlock().getHeight());
+        //create Block also puts a new block into the blockchain successfully
+        blockHandler.createBlock(aliceKeyPair.getPublic());
+        System.out.println(blockChain.printBlockChain());
+
+        blockHandler.createBlock(aliceKeyPair.getPublic());
+        System.out.println(blockChain.printBlockChain());
+
+
+        System.out.println("Max Height" + blockChain.getMaxHeightBlock().getHeight());
 
 
     }
