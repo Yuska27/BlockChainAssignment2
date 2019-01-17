@@ -5,7 +5,7 @@ public class BlockNode{
     private String dateOfBlock;
     private int height;
 
-    public BlockNode(Block blockOfThisNode, String dateOfBlock, int height){
+    public BlockNode( Block blockOfThisNode, String dateOfBlock, int height){
         this.blockOfThisNode = blockOfThisNode;
         this.dateOfBlock = dateOfBlock;
         this.height = height;

@@ -42,12 +42,17 @@ public class BlockChain {
                                                                        .collect(Collectors.toList());
 
         maximumHeightNodes.sort(Comparator.comparing(node -> node.getDateOfBlock()));
+        System.out.println(maximum);
         return maximumHeightNodes.get(0); // oldest block of maxHeight is the first of this list
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
-        return this.utxoPool;
+        ArrayList<Transaction> maxHeightBlockTxs = getMaxHeightBlock().getBlockOfThisNode().getTransactions();
+        for(Transaction tx :maxHeightBlockTxs) {
+            
+        } 
+        return ();
     }
 
     /** Get the transaction pool to mine a new block */
@@ -106,7 +111,7 @@ public class BlockChain {
             this.txPool.addTransaction(block.getCoinbase()); //the coinbase transaction is added if the block is valid
         }
         //Creating a new BlockNode and adding it to the hashmap in BlockChain
-        nodesOfBlockChain.put(block.getRawBlock(), new BlockNode(block, dateFormat.format(new Date()), maxHeightBlock.getHeight()+1));
+        nodesOfBlockChain.put(block.getHash(), new BlockNode(block, dateFormat.format(new Date()), nodesOfBlockChain.get(block.getPrevBlockHash()).getHeight()+1));
 
         return true;
     }
@@ -114,6 +119,18 @@ public class BlockChain {
     /** Add a transaction to the transaction pool */
     public void addTransaction(Transaction tx) {
         txPool.addTransaction(tx);
+    }
+
+    public String printBlockChain() {
+        BlockNode headBlock = getMaxHeightBlock();
+        String activeBlockChain = new String(); 
+        do {
+            activeBlockChain += headBlock.getBlockOfThisNode().getHash();
+            activeBlockChain += "-->";
+            headBlock = this.nodesOfBlockChain.get(headBlock.getBlockOfThisNode().getPrevBlockHash());
+        } while(headBlock.getBlockOfThisNode().getPrevBlockHash() != null);
+        activeBlockChain += "genesis";
+        return(activeBlockChain);
     }
 }
 

@@ -75,6 +75,9 @@ public class Test {
             System.out.println("Transaction is not accepted.\n");
         }
 
+
+
+
         Block genesis = new Block(null, aliceKeyPair.getPublic());
         genesis.finalize();
         BlockChain blockChain = new BlockChain(genesis);
@@ -96,10 +99,21 @@ public class Test {
 
         blockHandler.processBlock(block3);
 
-        System.out.println(blockChain.nodesOfBlockChain.size());
+        Block block4 = new Block(block3.getHash(),bobKeyPair.getPublic());
+        block4.finalize();
 
-        System.out.println(blockChain.getMaxHeightBlock().getHeight());
+        blockHandler.processBlock(block4);
+        System.out.println(blockChain.printBlockChain());
 
+        Block block5 = new Block(block2.getHash(),bobKeyPair.getPublic());
+        block5.finalize();
+
+        blockHandler.processBlock(block5);
+        System.out.println(blockChain.printBlockChain());
+
+        // System.out.println(blockChain.nodesOfBlockChain.size());
+
+        // System.out.println(blockChain.getMaxHeightBlock().getHeight());
 
 
     }
