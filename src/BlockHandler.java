@@ -22,7 +22,7 @@ public class BlockHandler {
 
     /** create a new {@code block} over the max height {@code block} */
     public Block createBlock(PublicKey myAddress) {
-        Block parent = blockChain.getMaxHeightBlock().getBlockOfThisNode();
+        Block parent = blockChain.getMaxHeightBlock();
         byte[] parentHash = parent.getHash();
         Block current = new Block(parentHash, myAddress);
         UTXOPool uPool = blockChain.getMaxHeightUTXOPool();

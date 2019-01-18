@@ -75,56 +75,53 @@ public class Test {
             System.out.println("Transaction is not accepted.\n");
         }
 
-
-
         Block genesis = new Block(null, aliceKeyPair.getPublic());
         genesis.finalize();
 
         BlockChain blockChain = new BlockChain(genesis);
         BlockHandler blockHandler = new BlockHandler(blockChain);
+        System.out.println("Genesis Block added.\n");
 
 
-        Block block2 = new Block(genesis.getHash(),aliceKeyPair.getPublic());
         Transaction validTransaction = new Transaction();
-        validTransaction.addOutput(0,aliceKeyPair.getPublic());
-        System.out.println("Is the transaction which is added to the BC valid? --> " + txHandler.isValidTx(validTransaction));
+        validTransaction.addOutput(1,aliceKeyPair.getPublic());
         validTransaction.finalize();
-        blockChain.addTransaction(validTransaction);
+        blockHandler.processTx(validTransaction);
         System.out.println("Transactions in the blockchain txPool: " + blockChain.getTransactionPool().getTransactions().size());
 
-
+        Block block2 = new Block(genesis.getHash(),aliceKeyPair.getPublic());
         block2.finalize();
-        System.out.println("Block 2 Transactions: " + block2.getTransactions().size()); //the transaction is not forwareded to the block ...
         blockHandler.processBlock(block2);
+        System.out.println("New Block has been added via processBlock");
+        System.out.println("Blockchain: " + blockChain.printBlockChain()+ "\n");
 
         Block block3 = new Block(block2.getHash(),bobKeyPair.getPublic());
         block3.finalize();
         blockHandler.processBlock(block3);
+        System.out.println("New Block has been added via processBlock");
+        System.out.println("Blockchain: " + blockChain.printBlockChain()+ "\n");
 
         Block block4 = new Block(block3.getHash(),bobKeyPair.getPublic());
         block4.finalize();
         blockHandler.processBlock(block4);
+        System.out.println("New Block has been added via processBlock");
+        System.out.println("Blockchain: " + blockChain.printBlockChain()+ "\n");
 
         Block block5 = new Block(block2.getHash(),bobKeyPair.getPublic());
         block5.finalize();
-
         blockHandler.processBlock(block5);
-        System.out.println(blockChain.printBlockChain());
+        System.out.println("Forked, Block5 --> Block 2 but the main Blockchain is still built on the one with maxHeight");
 
 
         //create Block also puts a new block into the blockchain successfully
+        System.out.println("New Block has been added via createBlock");
         blockHandler.createBlock(aliceKeyPair.getPublic());
-        System.out.println(blockChain.printBlockChain());
+        System.out.println("Blockchain: " + blockChain.printBlockChain()+ "\n");
 
+        System.out.println("New Block has been added via createBlock");
         blockHandler.createBlock(aliceKeyPair.getPublic());
-        System.out.println(blockChain.printBlockChain());
+        System.out.println("Blockchain: " + blockChain.printBlockChain()+ "\n");
 
-
-        System.out.println("Max Height" + blockChain.getMaxHeightBlock().getHeight());
-
-
+        System.out.println("Max Height: " + blockChain.nodesOfBlockChain.get(blockChain.getMaxHeightBlock().getHash()).getHeight());
     }
-
-
-    
 }

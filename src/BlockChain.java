@@ -7,12 +7,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BlockChain {
-    public static final int CUT_OFF_AGE = 10;
+    private static final int CUT_OFF_AGE = 10;
+
+    private static final int NUMBER_OF_BLOCKS_IN_MEMORY = 1000;
 
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
     private TransactionPool txPool = new TransactionPool();
     private UTXOPool utxoPool = new UTXOPool();
+
+    // Look up table for blocks of the blockchain containing Hash and corresponding block as entries
     public HashMap<byte[] , BlockNode> nodesOfBlockChain = new HashMap<>();
 
 
@@ -30,26 +34,32 @@ public class BlockChain {
 
 
     /** Get the maximum height block */
-    public BlockNode getMaxHeightBlock() {
+    public Block getMaxHeightBlock() {
+        //get one of the nodes with max height to extract the maximum height value from it
         BlockNode oneMaximumHeightNode =  nodesOfBlockChain.values().stream()
                                                                         .max(Comparator.comparing(node -> node.getHeight()))
                                                                         .orElse(null);
 
         final int maximum = (oneMaximumHeightNode != null) ? oneMaximumHeightNode.getHeight() : 1;
-
+        //get all nodes with maximum height
         List<BlockNode> maximumHeightNodes = nodesOfBlockChain.values().stream()
                                                                        .filter(node -> node.getHeight() == maximum)
                                                                        .collect(Collectors.toList());
 
-        maximumHeightNodes.sort(Comparator.comparing(node -> node.getDateOfBlock()));
-        return maximumHeightNodes.get(0); // oldest block of maxHeight is the first of this list
+        //receive the oldest block of maximum height in case there are more than one element of maximum height
+        if(maximumHeightNodes.size() > 1){
+            maximumHeightNodes.sort(Comparator.comparing(node -> node.getDateOfBlock()));
+        }
+
+        return maximumHeightNodes.get(0).getBlockOfThisNode(); // oldest block of maxHeight is the first of this list
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
-        ArrayList<Transaction> maxHeightBlockTxs = getMaxHeightBlock().getBlockOfThisNode().getTransactions();
+        ArrayList<Transaction> maxHeightBlockTxs = getMaxHeightBlock().getTransactions();
         UTXOPool maxHeightUTXOPool = new UTXOPool();
 
+        //adding all the outputs from transactions that are in the max heigth block
         for(Transaction tx : maxHeightBlockTxs) {
             for(int index = 0; index <tx.getOutputs().size(); index++) {
                 maxHeightUTXOPool.addUTXO(new UTXO(tx.getHash(), index), tx.getOutput(index));
@@ -76,19 +86,20 @@ public class BlockChain {
      * @return true if block is successfully added
      */
     public boolean addBlock(Block block) {
-        // the genesis block is the only one that does not have a previous hash
         TxHandler txHandler = new TxHandler(this.utxoPool);
         byte[]  prevBlockHash = block.getPrevBlockHash();
         ArrayList<Transaction> blockTx = block.getTransactions();
         BlockNode prevBlock = this.nodesOfBlockChain.get(prevBlockHash);
-        BlockNode maxHeightBlock = this.getMaxHeightBlock();
-        
-        if(block.getPrevBlockHash() == null)
-            return false;
-        
-        if(prevBlock.getHeight() < maxHeightBlock.getHeight() - CUT_OFF_AGE)
-            return false;
+        BlockNode maxHeightBlock = nodesOfBlockChain.get(getMaxHeightBlock().getHash());
 
+        // the genesis block is the only one that does not have a previous hash
+        if(block.getPrevBlockHash() == null){
+            return false;
+        }
+
+        if(prevBlock.getHeight() < maxHeightBlock.getHeight() - CUT_OFF_AGE){
+            return false;
+        }
 
         Transaction[] validTxs = new Transaction[blockTx.size()];
         int i = 0;
@@ -113,9 +124,26 @@ public class BlockChain {
 
             this.txPool.addTransaction(block.getCoinbase()); //the coinbase transaction is added if the block is valid
         }
+
         //Creating a new BlockNode and adding it to the hashmap in BlockChain
         nodesOfBlockChain.put(block.getHash(), new BlockNode(block, dateFormat.format(new Date()), nodesOfBlockChain.get(block.getPrevBlockHash()).getHeight()+1));
 
+        //if 1000 nodes are in the current blockchain, the number is reduced to
+        if(nodesOfBlockChain.size() >= NUMBER_OF_BLOCKS_IN_MEMORY){
+            HashMap<byte[], BlockNode> newMap = new HashMap<>();
+            //split the hashmap and take the newer half
+            int half = nodesOfBlockChain.entrySet().size()/2;
+
+            for(HashMap.Entry<byte[], BlockNode> entry : nodesOfBlockChain.entrySet()){
+                if(entry.getValue().getHeight() >= half){
+                    newMap.put(entry.getKey(), entry.getValue());
+                }
+                else{
+                    //persist the other nodes in some external File
+                }
+            }
+            nodesOfBlockChain = newMap; //only the 500 latest are inside the blockChain
+        }
         return true;
     }
 
@@ -125,7 +153,7 @@ public class BlockChain {
     }
 
     public String printBlockChain() {
-        BlockNode headBlock = getMaxHeightBlock();
+        BlockNode headBlock = nodesOfBlockChain.get(getMaxHeightBlock().getHash());
         String activeBlockChain = new String(); 
         do {
             activeBlockChain += headBlock.getBlockOfThisNode().getHash();
@@ -134,6 +162,31 @@ public class BlockChain {
         } while(headBlock.getBlockOfThisNode().getPrevBlockHash() != null);
         activeBlockChain += "genesis";
         return(activeBlockChain);
+    }
+
+    public class BlockNode{ //wrap a block with height and date
+        //unidirected tree node, each block does not know it's successor
+        private Block blockOfThisNode; //Block
+        private String dateOfBlock; //relevant to select a the maxHeightBlock in case multiple blocks have the maxHeight
+        private int height; // height of the block, which is increased incrementally
+
+        public BlockNode( Block blockOfThisNode, String dateOfBlock, int height){
+            this.blockOfThisNode = blockOfThisNode;
+            this.dateOfBlock = dateOfBlock;
+            this.height = height;
+        }
+
+        public Block getBlockOfThisNode(){
+            return this.blockOfThisNode;
+        }
+
+        public String getDateOfBlock(){
+            return this.dateOfBlock;
+        }
+
+        public int getHeight(){
+            return height;
+        }
     }
 }
 
